@@ -1,0 +1,23 @@
+# UDPipe model (large binary, re-downloaded on demand by udpipe())
+english-gum-ud-2.5-191206.udpipe
+*.udpipe
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.bbl
+*.blg
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+
+# OS
+.DS_Store
+Thumbs.db
