@@ -27,9 +27,9 @@
 
 \section{Introduction}
 
-We looked at sentiment in Amazon reviews for \textit{Atomic Habits} by James Clear. We wanted to see if three different ways of figuring out what people thought would match up with the star ratings they left.
+We looked at sentiment in Amazon reviews for \textit{Atomic Habits} by James Clear. We wanted to see if different ways of figuring out what people thought would match up with the star ratings they left.
 
-We tried five approaches. First, a simple method looking for words in a list (the Bing lexicon), done both with and without removing common words. Then, the same lexicon used through UDPipe, in a basic version and an extended one that also pays attention to negate words and words that make things stronger or weaker. Lastly, a Naive Bayes classifier that learned from the star ratings themselves. We used star ratings, simplified to two groups, as our measure of what was real.
+We tried five approaches. First, a simple method looking for words in a list (the Bing lexicon), done both with and without removing stopwords. Then, the same lexicon used through UDPipe, in a basic version and an extended one that also pays attention to negators and words that make things stronger or weaker. Lastly, a Naive Bayes classifier that learned from the star ratings themselves. We used star ratings, simplified to two groups (positive if 4 or 5 stars, negative if 3 stars or below), as our measure of what was real.
 
 \section{Data}
 
@@ -43,7 +43,7 @@ The main thing we were trying to predict, called \texttt{star\_sent}, took the s
 
 \subsection{Exploratory Analysis}
 
-Looking at the reviews, we saw that most of them were really positive, which makes sense for reviews people choose to leave (Figure~\ref{fig:explore}). If you just listed the most common words after getting rid of the usual small words like ``the'' and ``a,'' you'd get a basic idea of what people were talking about (Figure~\ref{fig:topwords}): terms like book, habits, read and life show the reviews really centre on the reading experience.
+Looking at the reviews, we saw that most of them were really positive, which makes sense for reviews people choose to leave (Figure~\ref{fig:explore}). If you just listed the most common words after getting rid of stopwords, you'd get a basic idea of what people were talking about (Figure~\ref{fig:topwords}): terms like book, habits, read and life show the reviews really centre on the reading experience.
 
 \begin{figure}[h]
 \centering
@@ -69,9 +69,9 @@ Looking at the reviews, we saw that most of them were really positive, which mak
 
 \subsection{Bing Lexicon}
 
-For the Bing lexicon method, we took each review, broke it into words, and then checked those words against our list. We counted how many positive words there were and subtracted the negative ones to get a score. We did this twice: once after removing the common words, and once with them still in. This was to see how cleaning up the text affected things.
+For the Bing lexicon method, we took each review, tokenized it, and then checked those words against our list. We counted how many positive words there were and subtracted the negative ones to get a score. We did this twice: once after removing the stopwords, and once with them still in. This was to see how cleaning up the text affected things.
 
-Removing the common words meant fewer reviews actually matched any words in our list, so we couldn't score as many. Keeping them meant more reviews had a score, but sometimes normal words like ``well'' or ``like'' could unfairly bump up or down the score. We decided that if a review had an equal number of positive and negative words (a score of zero), we'd count it as negative. We figured a score of zero means there is no positive signal, rather than a real sign of positivity. Then we compared scores with \texttt{star\_sent} using confusion matrices. Figure~\ref{fig:bingwords} shows which words drove the scores, with and without the common words removed.
+Removing the stopwords meant fewer reviews actually matched any words in our list, so we couldn't score as many. Keeping them meant more reviews had a score, but sometimes normal words like ``well'' or ``like'' could unfairly bump up or down the score. We decided that if a review had an equal number of positive and negative words (a score of zero), we'd count it as negative. We figured a score of zero means there is no positive signal, rather than a real sign of positivity. Then we compared scores with \texttt{star\_sent} using confusion matrices. Figure~\ref{fig:bingwords} shows which words drove the scores, with and without the stopwords removed.
 
 \begin{figure}[h]
 \centering
@@ -90,11 +90,11 @@ Removing the common words meant fewer reviews actually matched any words in our 
 
 \subsection{UDPipe}
 
-Next, we used UDPipe, a more advanced tool, on the reviews, using a specific English language model called GUM. We then reformatted our Bing lexicon so it worked with UDPipe. We tried two ways. The first, kind of a basic version, just applied the lexicon to the root form of words without any extra bits attached. The second version, Udpipe, actually added in words that negated meaning (like ``not'') and words that amplified or reduced the impact of other words (like ``very'' or ``quite''). We gave the amplifiers a weight of 0.8 and looked at words within three places before and after a sentiment word. We picked the most common adverbs in the reviews as our amplifiers and deamplifiers.
+Next, we used UDPipe, a more advanced tool, on the reviews, using a specific English language model called GUM. We then reformatted our Bing lexicon so it worked with UDPipe. We tried two ways. The first, a basic version, applied the lexicon to the lemma of each word, without taking negators or amplifiers into account. The second version added in words that negate meaning (negators, like ``not'') and words that amplify or reduce the impact of other words (amplifiers and deamplifiers, like ``very'' or ``quite''). We gave the amplifiers a weight of 0.8 and looked at words within three places before and after a sentiment word. We picked the most common adverbs in the reviews as our amplifiers and deamplifiers.
 
 \subsection{Naive Bayes}
 
-The Naive Bayes classifier used \texttt{star\_sent} as the label. We broke the reviews into words using quanteda, got rid of punctuation, numbers, and common words, and then shortened the words to their basic form. This showed which words were in the reviews. We then trained the classifier on about 70 percent of the reviews (66 documents) and tested it on the remaining 29, making sure it only looked at words it had seen during training.
+The Naive Bayes classifier used \texttt{star\_sent} as the label. We tokenized the reviews using quanteda, got rid of punctuation, numbers, and stopwords, and then shortened the words to their basic form (stemming). This showed which words were in the reviews. We then trained the classifier on about 70 percent of the reviews (66 documents) and tested it on the remaining 29, making sure it only looked at words it had seen during training.
 
 \subsection{Comparison of All Methods}
 
@@ -111,17 +111,20 @@ When we looked at all 95 reviews, the accuracy scores were as follows.
 \caption{Full dataset results}
 \begin{tabular}{lcc}
 \toprule
-Method & Accuracy & Kappa \\
+Method & Accuracy & Sensitivity \\
 \midrule
-Bing, no stopwords & 0.66 & 0.08 \\
-Bing, stopwords    & 0.84 & 0.19 \\
-UDbing             & 0.82 & 0.31 \\
-UDpipe             & 0.82 & 0.35 \\
+Bing, no stopwords & 0.66 & 0.45 \\
+Bing, stopwords    & 0.84 & 0.27 \\
+UDbing             & 0.82 & 0.46 \\
+UDpipe             & 0.82 & 0.54 \\
 \bottomrule
 \end{tabular}
+
+\vspace{0.5em}
+{\small No Information Rate (majority class) = 0.86.}
 \end{table}
 
-Noticed two things. All the methods were pretty good at figuring out the positive reviews, which made up most of our data. However, they all struggled with the small number of negative reviews. About half to two thirds of negative reviews were missed. Since our test set only had six negative reviews, it's hard to be super confident in these numbers, and none of the methods were significantly better than just guessing the majority class. So, the ranking is more of an indication.
+Noticed two things. All the methods were pretty good at figuring out the positive reviews, which made up most of our data, as the high specificity shows. However, they all struggled with the small number of negative reviews, which is what the sensitivity column captures: it ranges from 0.27 (Bing with stopwords) to 0.54 (UDpipe), so between roughly half and three quarters of the negative reviews were missed. Since the full dataset only had 13 negative reviews, it's hard to be super confident in these numbers, and no method clearly beat the No Information Rate of 0.86. So, the ranking is more of an indication.
 
 On the smaller, common 29-document test set, the results were as follows.
 
@@ -150,8 +153,8 @@ Bing, no stopwords & 0.72 \\
 
 \section{Conclusions}
 
-These dictionary methods are easy, and don't need extra training. Their downsides are that they might not have all the words you're looking for in their lists and how you clean the text can really change the results. The UDPipe modifiers (like ``not'' or ``very'') are a good idea in theory, but in this specific set of reviews, they didn't help much because those kinds of words didn't show up very often. Naive Bayes can learn unique words from the specific reviews it sees, but you need reviews that are already labeled with their sentiment, and you need a separate set of reviews to test it on.
+These dictionary methods are easy, and don't need extra training. Their downsides are that they might not have all the words you're looking for in their lists and how you clean the text can really change the results. UDpipe came out as the best method: it was the most accurate on the common test set (0.86), and on the full dataset it caught more of the negative reviews than any other approach. The UDPipe modifiers (negators like ``not'' and amplifiers like ``very'') clearly helped here. Comparing UDpipe to UDbing isolates their effect, since the two share the same lexicon and model and differ only in whether the modifiers are used: adding them raised the sensitivity on negative reviews from 0.46 to 0.54, while keeping the same overall accuracy. So accounting for negation and intensity made the method better exactly where all the others struggled. Naive Bayes can learn unique words from the specific reviews it sees, but you need reviews that are already labeled with their sentiment, and you need a separate set of reviews to test it on.
 
-The biggest problem here is the uneven number of positive and negative reviews. With so many positive reviews, any method that just defaults to calling everything positive will look more accurate than it really is. We could say more if the reviews were better and we used more ways to check accuracy. No method was the clear winner. Bing's simple, but Naive Bayes works for lots of text types. It depends what you want from the analysis.
+The biggest problem here is the uneven number of positive and negative reviews. With so many positive reviews, any method that just defaults to calling everything positive will look more accurate than it really is. We could say more if the reviews were better and we used more ways to check accuracy. Among the methods we tried, UDpipe was the strongest, mainly because handling negation and intensity helped it on the negative reviews the others kept missing. Bing's simple, and Naive Bayes works for lots of text types, but on these reviews the modifier-aware UDpipe had the edge.
 
 \end{document}
